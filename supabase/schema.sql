@@ -250,3 +250,101 @@ create policy "admins verify submissions" on submissions
   for update using (
     public.is_comp_admin((select m.competition_id from matches m where m.id = submissions.match_id))
   );
+
+-- Auto-add creator as captain (mirrors the auth signup trigger pattern)
+create function public.handle_new_team()
+returns trigger
+language plpgsql
+security definer set search_path = ''
+as $$
+begin
+  insert into public.team_members (team_id, user_id, role)
+  values (new.id, new.created_by, 'captain');
+  return new;
+end;
+$$;
+
+create trigger on_team_created
+  after insert on teams
+  for each row execute function public.handle_new_team();
+
+-- Replace the too-loose policy: users may only LEAVE, not add themselves
+drop policy "manage own membership" on team_members;
+
+create policy "leave team" on team_members
+  for delete using (auth.uid() = user_id);
+
+-- Helper: is the current user captain of this team? (security definer breaks the recursion)
+create function public.is_team_captain(t_id uuid)
+returns boolean
+language sql
+security definer set search_path = ''
+stable
+as $$
+  select exists (
+    select 1 from public.team_members
+    where team_id = t_id and user_id = auth.uid() and role = 'captain'
+  );
+$$;
+
+-- Replace the recursive policy
+drop policy "captain manages members" on team_members;
+
+create policy "captain manages members" on team_members
+  for all using (public.is_team_captain(team_id));
+
+create unique index teams_title_lower_name_key on teams (title_id, lower(name));
+
+create type invite_status as enum ('pending', 'accepted', 'declined');
+
+create table team_invites (
+  id uuid primary key default gen_random_uuid(),
+  team_id uuid not null references teams(id) on delete cascade,
+  user_id uuid not null references users(id) on delete cascade,
+  invited_by uuid not null references users(id),
+  status invite_status not null default 'pending',
+  created_at timestamptz not null default now(),
+  unique (team_id, user_id)
+);
+
+alter table team_invites enable row level security;
+
+-- Only the involved parties see invites (not public — your invites are your business)
+create policy "see own invites" on team_invites
+  for select using (
+    auth.uid() = user_id or public.is_team_captain(team_id)
+  );
+
+create policy "captain invites" on team_invites
+  for insert with check (
+    public.is_team_captain(team_id) and auth.uid() = invited_by
+  );
+
+-- Invitee answers their own pending invite
+create policy "invitee responds" on team_invites
+  for update using (auth.uid() = user_id and status = 'pending');
+
+-- Captain can retract a pending invite
+create policy "captain cancels" on team_invites
+  for delete using (public.is_team_captain(team_id));
+
+  create function public.accept_team_invite(invite_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  inv record;
+begin
+  select * into inv from public.team_invites
+  where id = invite_id and user_id = auth.uid() and status = 'pending';
+
+  if inv is null then
+    raise exception 'Invite not found or not yours';
+  end if;
+
+  update public.team_invites set status = 'accepted' where id = invite_id;
+  insert into public.team_members (team_id, user_id, role)
+  values (inv.team_id, inv.user_id, 'member');
+end;
+$$;
