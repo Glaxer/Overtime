@@ -27,12 +27,6 @@ export default async function Sidebar() {
 
       {/* Navigation */}
       <nav className="flex flex-col gap-1">
-        <Link
-          href="/titles"
-          className="rounded px-2 py-1.5 text-sm hover:bg-gray-100"
-        >
-          Titles
-        </Link>
         {user && (
           <Link
             href="/dashboard"
@@ -41,6 +35,12 @@ export default async function Sidebar() {
             Dashboard
           </Link>
         )}
+        <Link
+          href="/titles"
+          className="rounded px-2 py-1.5 text-sm hover:bg-gray-100"
+        >
+          Titles
+        </Link>
       </nav>
 
       {/* Auth section — pinned to the bottom */}
