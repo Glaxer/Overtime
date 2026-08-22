@@ -16,6 +16,7 @@ import { getMatches } from "@/lib/queries/matches";
 import Button from "@/components/ui/Button";
 import SwapTool from "@/components/ui/SwapTool";
 import Link from "next/link";
+import { getStandings } from "@/lib/queries/standings";
 
 export default async function CompetitionPage({
   params
@@ -62,6 +63,8 @@ export default async function CompetitionPage({
           timeZone: "Europe/Copenhagen"
         })
       : "TBD";
+
+  const standings = comp.type === "league" ? await getStandings(comp.id) : [];
 
   return (
     <div className="max-w-2xl">
@@ -300,6 +303,50 @@ export default async function CompetitionPage({
               Publish schedule
             </button>
           </form>
+        </div>
+      )}
+      {standings.length > 0 && comp.status !== "open" && (
+        <div className="mb-8">
+          <h2 className="mb-2 font-semibold">Standings</h2>
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs text-gray-500">
+              <tr>
+                <th className="py-1 pr-2">#</th>
+                <th className="py-1 pr-2">Team</th>
+                <th className="py-1 pr-2 text-right">P</th>
+                <th className="py-1 pr-2 text-right">W</th>
+                <th className="py-1 pr-2 text-right">L</th>
+                <th className="py-1 pr-2 text-right">Games</th>
+                <th className="py-1 pr-2 text-right">+/−</th>
+                <th className="py-1 text-right">Pts</th>
+              </tr>
+            </thead>
+            <tbody>
+              {standings.map((row, i) => (
+                <tr key={row.teamId} className="border-t border-gray-700">
+                  <td className="py-1 pr-2 text-gray-500">{i + 1}</td>
+                  <td className="py-1 pr-2">
+                    <Link
+                      href={`/teams/${row.teamId}`}
+                      className="hover:underline"
+                    >
+                      {row.teamName}
+                    </Link>
+                  </td>
+                  <td className="py-1 pr-2 text-right">{row.played}</td>
+                  <td className="py-1 pr-2 text-right">{row.wins}</td>
+                  <td className="py-1 pr-2 text-right">{row.losses}</td>
+                  <td className="py-1 pr-2 text-right text-gray-500">
+                    {row.gameWins}–{row.gameLosses}
+                  </td>
+                  <td className="py-1 pr-2 text-right">
+                    {row.gameDiff > 0 ? `+${row.gameDiff}` : row.gameDiff}
+                  </td>
+                  <td className="py-1 text-right font-medium">{row.points}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
