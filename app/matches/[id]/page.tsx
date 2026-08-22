@@ -7,7 +7,10 @@ import {
   submitResult,
   verifySubmission,
   rejectSubmission,
-  forfeitMatch
+  forfeitMatch,
+  approveReschedule,
+  rejectReschedule,
+  proposeReschedule
 } from "../actions";
 import Button from "@/components/ui/Button";
 
@@ -52,6 +55,21 @@ export default async function MatchPage({
 
   const pending = match.submissions.filter((s) => s.status === "pending");
   const hasResult = games.length > 0 || !!match.forfeited_by;
+
+  const pendingReschedule = match.reschedules?.find(
+    (r) => r.status === "pending"
+  );
+  const usedReschedule = match.reschedules?.some((r) =>
+    ["pending", "approved"].includes(r.status)
+  );
+  const iRequested = pendingReschedule?.requested_by === user?.id;
+
+  // Max +1 week, for the datetime input's max attribute
+  const maxDate = match.scheduled_at
+    ? new Date(new Date(match.scheduled_at).getTime() + 7 * 864e5)
+        .toISOString()
+        .slice(0, 16)
+    : undefined;
 
   const fmt = (iso: string | null) =>
     iso
@@ -193,6 +211,69 @@ export default async function MatchPage({
               );
             })}
           </ul>
+        </div>
+      )}
+      {/* Propose a reschedule */}
+      {!hasResult && myCaptainTeam && !usedReschedule && match.scheduled_at && (
+        <div className="mb-8 max-w-sm">
+          <h2 className="mb-2 font-semibold">Propose a new time</h2>
+          <p className="mb-2 text-xs text-gray-500">
+            Up to one week later. Needs approval from the opposing captain and
+            an admin. Each match can only be moved once.
+          </p>
+          <form action={proposeReschedule} className="flex gap-2">
+            <input type="hidden" name="match_id" value={match.id} />
+            <input
+              type="datetime-local"
+              name="proposed_at"
+              required
+              min={match.scheduled_at.slice(0, 16)}
+              max={maxDate}
+              className="flex-1 rounded border p-1 text-sm"
+            />
+            <Button>Propose</Button>
+          </form>
+        </div>
+      )}
+
+      {/* Pending reschedule request */}
+      {pendingReschedule && (
+        <div className="mb-8 max-w-md rounded border p-3">
+          <h2 className="mb-1 font-semibold">Reschedule requested</h2>
+          <p className="text-sm">
+            {pendingReschedule.requester.display_name} proposes{" "}
+            <span className="font-medium">
+              {fmt(pendingReschedule.proposed_at)}
+            </span>
+          </p>
+          <p className="mt-1 text-xs text-gray-500">
+            Opponent:{" "}
+            {pendingReschedule.opponent_approved_by ? "✓ approved" : "waiting"}{" "}
+            · Admin:{" "}
+            {pendingReschedule.admin_approved_by ? "✓ approved" : "waiting"}
+          </p>
+          {((myCaptainTeam && !iRequested) || isAdmin) && (
+            <span className="mt-2 flex gap-2">
+              <form action={approveReschedule}>
+                <input type="hidden" name="match_id" value={match.id} />
+                <input
+                  type="hidden"
+                  name="reschedule_id"
+                  value={pendingReschedule.id}
+                />
+                <Button>Approve</Button>
+              </form>
+              <form action={rejectReschedule}>
+                <input type="hidden" name="match_id" value={match.id} />
+                <input
+                  type="hidden"
+                  name="reschedule_id"
+                  value={pendingReschedule.id}
+                />
+                <Button variant="secondary">Reject</Button>
+              </form>
+            </span>
+          )}
         </div>
       )}
     </div>

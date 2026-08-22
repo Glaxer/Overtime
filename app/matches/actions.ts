@@ -93,3 +93,45 @@ export async function forfeitMatch(formData: FormData) {
     `/matches/${matchId}?success=${encodeURIComponent("Match forfeited")}`
   );
 }
+
+export async function proposeReschedule(formData: FormData) {
+  const supabase = await createClient();
+  const matchId = formData.get("match_id") as string;
+
+  const { error } = await supabase.rpc("propose_reschedule", {
+    p_match_id: matchId,
+    p_proposed_at: new Date(formData.get("proposed_at") as string).toISOString()
+  });
+
+  if (error)
+    redirect(`/matches/${matchId}?error=${encodeURIComponent(error.message)}`);
+  redirect(
+    `/matches/${matchId}?success=${encodeURIComponent("Reschedule proposed — awaiting approvals")}`
+  );
+}
+
+export async function approveReschedule(formData: FormData) {
+  const supabase = await createClient();
+  const matchId = formData.get("match_id") as string;
+
+  const { error } = await supabase.rpc("approve_reschedule", {
+    p_reschedule_id: formData.get("reschedule_id") as string
+  });
+
+  if (error)
+    redirect(`/matches/${matchId}?error=${encodeURIComponent(error.message)}`);
+  redirect(`/matches/${matchId}?success=${encodeURIComponent("Approved")}`);
+}
+
+export async function rejectReschedule(formData: FormData) {
+  const supabase = await createClient();
+  const matchId = formData.get("match_id") as string;
+
+  const { error } = await supabase.rpc("reject_reschedule", {
+    p_reschedule_id: formData.get("reschedule_id") as string
+  });
+
+  if (error)
+    redirect(`/matches/${matchId}?error=${encodeURIComponent(error.message)}`);
+  revalidatePath(`/matches/${matchId}`);
+}
