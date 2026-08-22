@@ -348,3 +348,33 @@ begin
   values (inv.team_id, inv.user_id, 'member');
 end;
 $$;
+
+-- Creator becomes comp admin automatically
+create function public.handle_new_competition()
+returns trigger
+language plpgsql
+security definer set search_path = ''
+as $$
+begin
+  insert into public.comp_admins (competition_id, user_id)
+  values (new.id, new.created_by);
+  return new;
+end;
+$$;
+
+create trigger on_competition_created
+  after insert on competitions
+  for each row execute function public.handle_new_competition();
+
+-- Captains can withdraw their team's signup; admins can remove signups
+create policy "captain withdraws signup" on signups
+  for delete using (
+    exists (
+      select 1 from team_members tm
+      where tm.team_id = signups.team_id
+        and tm.user_id = auth.uid() and tm.role = 'captain'
+    )
+  );
+
+create policy "admins remove signups" on signups
+  for delete using (public.is_comp_admin(competition_id));

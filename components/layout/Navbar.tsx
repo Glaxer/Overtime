@@ -41,6 +41,12 @@ export default async function Sidebar() {
         >
           Titles
         </Link>
+        <Link
+          href="/competitions"
+          className="rounded px-2 py-1.5 text-sm hover:bg-gray-100"
+        >
+          Competitions
+        </Link>
       </nav>
 
       {/* Auth section — pinned to the bottom */}
