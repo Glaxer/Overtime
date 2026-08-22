@@ -31,12 +31,13 @@ export async function signup(formData: FormData) {
 
   if (error) redirect("/signup?error=" + encodeURIComponent(error.message));
 
-  redirect("/login?message=Check your email to confirm your account");
+  revalidatePath("/", "layout");
+  redirect("/dashboard");
 }
 
 export async function logout() {
   const supabase = await createClient();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
-  redirect("/dashboard");
+  redirect("/");
 }

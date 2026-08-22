@@ -4,14 +4,11 @@ import { getTeam } from "@/lib/queries/teams";
 import { addMember } from "../actions";
 
 export default async function TeamPage({
-  params,
-  searchParams
+  params
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
 }) {
   const { id } = await params;
-  const { error } = await searchParams;
 
   const team = await getTeam(id);
   if (!team) notFound();
@@ -47,7 +44,6 @@ export default async function TeamPage({
       {isCaptain && (
         <div className="max-w-sm">
           <h2 className="mb-2 font-semibold">Add member</h2>
-          {error && <p className="mb-2 text-sm text-red-600">{error}</p>}
           <form action={addMember} className="flex gap-2">
             <input type="hidden" name="team_id" value={team.id} />
             <input

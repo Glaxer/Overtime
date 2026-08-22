@@ -3,6 +3,8 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
+import { Suspense } from "react";
+import Alert from "@/components/ui/Alert";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,6 +31,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       >
+        <Suspense>
+          <Alert />
+        </Suspense>
         <div className="flex min-h-screen">
           <Navbar />
           <main className="flex-1 p-8">{children}</main>

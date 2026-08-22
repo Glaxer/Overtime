@@ -1,0 +1,81 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+
+type Variant = "success" | "error" | "warning" | "info";
+
+const styles: Record<Variant, string> = {
+  success: "border-green-500 bg-green-500/10 text-green-500",
+  error: "border-red-500 bg-red-500/10 text-red-500",
+  warning: "border-amber-500 bg-amber-500/10 text-amber-500",
+  info: "border-blue-500 bg-blue-500/10 text-blue-500"
+};
+
+const PARAMS: Variant[] = ["error", "success", "warning", "info"];
+const DISMISS_MS = 10_000;
+
+export default function Alert() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  const [alert, setAlert] = useState<{
+    variant: Variant;
+    message: string;
+  } | null>(null);
+  const [leaving, setLeaving] = useState(false);
+
+  // Watch the URL for alert params
+  useEffect(() => {
+    const found = PARAMS.find((p) => searchParams.get(p));
+    if (!found) return;
+
+    setAlert({ variant: found, message: searchParams.get(found)! });
+    setLeaving(false);
+
+    // Strip the param so the alert can't come back on refresh/share
+    const params = new URLSearchParams(searchParams);
+    PARAMS.forEach((p) => params.delete(p));
+    router.replace(params.size ? `${pathname}?${params}` : pathname, {
+      scroll: false
+    });
+  }, [searchParams, pathname, router]);
+
+  // Auto-dismiss
+  useEffect(() => {
+    if (!alert || leaving) return;
+    const timer = setTimeout(() => setLeaving(true), DISMISS_MS);
+    return () => clearTimeout(timer);
+  }, [alert, leaving]);
+
+  // Remove from DOM after the exit transition
+  useEffect(() => {
+    if (!leaving) return;
+    const timer = setTimeout(() => setAlert(null), 300);
+    return () => clearTimeout(timer);
+  }, [leaving]);
+
+  if (!alert) return null;
+
+  return (
+    <div
+      className={`fixed left-1/2 top-4 z-50 -translate-x-1/2 transition-all duration-300 ${
+        leaving ? "-translate-y-24 opacity-0" : "translate-y-0 opacity-100"
+      } animate-alert-in`}
+    >
+      <div
+        className={`flex items-center gap-3 rounded border px-4 py-2 text-sm shadow-lg ${styles[alert.variant]}`}
+      >
+        <span>{alert.message}</span>
+        <button
+          onClick={() => setLeaving(true)}
+          aria-label="Dismiss"
+          className="text-lg leading-none opacity-60 hover:opacity-100"
+        >
+          ×
+        </button>
+      </div>
+    </div>
+  );
+}

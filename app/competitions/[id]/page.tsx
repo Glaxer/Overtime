@@ -7,7 +7,6 @@ import {
   setSignupStatus,
   withdrawSignup,
   updatePlayoffTeams,
-  swapTeams,
   startCompetition,
   updateMatchTime,
   publishSchedule,
@@ -18,14 +17,11 @@ import Button from "@/components/ui/Button";
 import SwapTool from "@/components/ui/SwapTool";
 
 export default async function CompetitionPage({
-  params,
-  searchParams
+  params
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
 }) {
   const { id } = await params;
-  const { error } = await searchParams;
 
   const comp = await getCompetition(id);
   if (!comp) notFound();
@@ -72,7 +68,6 @@ export default async function CompetitionPage({
         {comp.title.name} · {comp.type} · {comp.status}
       </p>
       <h1 className="mb-6 text-2xl font-bold">{comp.name}</h1>
-      {error && <p className="mb-4 text-red-600">{error}</p>}
 
       <h2 className="mb-2 font-semibold">Teams</h2>
       <ul className="mb-8 flex flex-col gap-1">

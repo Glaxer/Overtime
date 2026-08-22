@@ -2,12 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { createTeam } from "../actions";
 
-export default async function NewTeamPage({
-  searchParams
-}: {
-  searchParams: Promise<{ error?: string }>;
-}) {
-  const { error } = await searchParams;
+export default async function NewTeamPage() {
   const supabase = await createClient();
 
   const {
@@ -20,7 +15,6 @@ export default async function NewTeamPage({
   return (
     <div className="max-w-sm">
       <h1 className="mb-6 text-2xl font-bold">Create a team</h1>
-      {error && <p className="mb-4 text-red-600">{error}</p>}
       <form action={createTeam} className="flex flex-col gap-3">
         <input
           name="name"
