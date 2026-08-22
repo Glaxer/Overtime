@@ -44,7 +44,7 @@ export async function getTeam(id: string) {
     console.error("getTeam error:", error);
     return null;
   }
-  return data as unknown as TeamWithRoster;
+  return data;
 }
 
 export async function getMyTeams(userId: string) {
@@ -59,7 +59,7 @@ export async function getMyTeams(userId: string) {
     )
     .eq("user_id", userId);
 
-  return (data ?? []) as unknown as MyTeamMembership[];
+  return data ?? [];
 }
 
 export async function getMyPendingInvites(userId: string) {
@@ -76,5 +76,5 @@ export async function getMyPendingInvites(userId: string) {
     .eq("user_id", userId)
     .eq("status", "pending");
 
-  return (data ?? []) as unknown as PendingInvite[];
+  return data ?? [];
 }
