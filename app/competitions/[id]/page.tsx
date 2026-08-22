@@ -15,6 +15,7 @@ import {
 import { getMatches } from "@/lib/queries/matches";
 import Button from "@/components/ui/Button";
 import SwapTool from "@/components/ui/SwapTool";
+import Link from "next/link";
 
 export default async function CompetitionPage({
   params
@@ -198,8 +199,34 @@ export default async function CompetitionPage({
                       key={m.id}
                       className="flex items-center justify-between rounded border p-3 text-sm"
                     >
-                      <span>
-                        {m.team_a.name} vs {m.team_b.name}
+                      <span className="flex items-center gap-2">
+                        <Link
+                          href={`/matches/${m.id}`}
+                          className="hover:underline"
+                        >
+                          {m.team_a.name} vs {m.team_b.name}
+                        </Link>
+                        {m.forfeited_by ? (
+                          <span className="text-gray-500">
+                            FF —{" "}
+                            {m.forfeited_by === m.team_a.id
+                              ? m.team_b.name
+                              : m.team_a.name}{" "}
+                            wins
+                          </span>
+                        ) : m.games.length > 0 ? (
+                          <span className="text-gray-500">
+                            {
+                              m.games.filter((g) => g.score_a > g.score_b)
+                                .length
+                            }
+                            –
+                            {
+                              m.games.filter((g) => g.score_b > g.score_a)
+                                .length
+                            }
+                          </span>
+                        ) : null}
                       </span>
                       {comp.status === "draft" && isAdmin ? (
                         <form

@@ -614,6 +614,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      verify_submission: {
+        Args: { p_submission_id: string }
+        Returns: undefined
+      }
     }
     Enums: {
       competition_status: "draft" | "open" | "active" | "completed"

@@ -809,3 +809,48 @@ begin
   end if;
 end;
 $$;
+
+create or replace function public.verify_submission(p_submission_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  sub record;
+  m record;
+  game jsonb;
+  i int := 0;
+begin
+  select * into sub from public.submissions
+  where id = p_submission_id and status = 'pending';
+  if sub is null then raise exception 'Submission not found or already handled'; end if;
+
+  select * into m from public.matches where id = sub.match_id;
+
+  if not public.is_comp_admin(m.competition_id) then
+    raise exception 'Only competition admins can verify';
+  end if;
+
+  if exists (select 1 from public.games where match_id = m.id) then
+    raise exception 'This match already has a verified result';
+  end if;
+
+  for game in select * from jsonb_array_elements(sub.payload->'games')
+  loop
+    i := i + 1;
+    insert into public.games (match_id, game_number, score_a, score_b)
+    values (m.id, i, (game->>'a')::int, (game->>'b')::int);
+  end loop;
+
+  update public.submissions
+  set status = 'verified', verified_by = auth.uid()
+  where id = p_submission_id;
+
+  -- Any other pending submissions for this match are superseded
+  update public.submissions
+  set status = 'rejected'
+  where match_id = m.id and status = 'pending' and id <> p_submission_id;
+
+  update public.matches set status = 'completed' where id = m.id;
+end;
+$$;
