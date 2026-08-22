@@ -49,6 +49,47 @@ export default async function NewCompetitionPage({
           className="rounded border p-2"
         />
 
+        <input
+          name="start_date"
+          type="date"
+          required
+          className="rounded border p-2"
+        />
+        <input
+          name="match_times"
+          placeholder="Match times, e.g. 19:00, 20:00"
+          required
+          className="rounded border p-2"
+        />
+        <input
+          name="round_interval_days"
+          type="number"
+          min={1}
+          defaultValue={7}
+          required
+          className="rounded border p-2"
+        />
+        <select
+          name="best_of"
+          required
+          className="rounded border p-2"
+          defaultValue={3}
+        >
+          {[1, 3, 5, 7].map((n) => (
+            <option key={n} value={n}>
+              Best of {n}
+            </option>
+          ))}
+        </select>
+        <input
+          name="playoff_teams"
+          type="number"
+          min={0}
+          defaultValue={4}
+          required
+          className="rounded border p-2"
+        />
+
         <button className="rounded bg-black p-2 text-white">
           Create competition
         </button>

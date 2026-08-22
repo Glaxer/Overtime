@@ -163,14 +163,78 @@ export type Database = {
           },
         ]
       }
+      match_reschedules: {
+        Row: {
+          admin_approved_by: string | null
+          created_at: string
+          id: string
+          match_id: string
+          opponent_approved_by: string | null
+          proposed_at: string
+          requested_by: string
+          status: Database["public"]["Enums"]["reschedule_status"]
+        }
+        Insert: {
+          admin_approved_by?: string | null
+          created_at?: string
+          id?: string
+          match_id: string
+          opponent_approved_by?: string | null
+          proposed_at: string
+          requested_by: string
+          status?: Database["public"]["Enums"]["reschedule_status"]
+        }
+        Update: {
+          admin_approved_by?: string | null
+          created_at?: string
+          id?: string
+          match_id?: string
+          opponent_approved_by?: string | null
+          proposed_at?: string
+          requested_by?: string
+          status?: Database["public"]["Enums"]["reschedule_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "match_reschedules_admin_approved_by_fkey"
+            columns: ["admin_approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_reschedules_match_id_fkey"
+            columns: ["match_id"]
+            isOneToOne: false
+            referencedRelation: "matches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_reschedules_opponent_approved_by_fkey"
+            columns: ["opponent_approved_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_reschedules_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       matches: {
         Row: {
           best_of: number
           competition_id: string
           created_at: string
+          forfeited_by: string | null
           id: string
           round: number
           scheduled_at: string | null
+          stage: Database["public"]["Enums"]["match_stage"]
           status: Database["public"]["Enums"]["match_status"]
           team_a_id: string
           team_b_id: string
@@ -179,9 +243,11 @@ export type Database = {
           best_of?: number
           competition_id: string
           created_at?: string
+          forfeited_by?: string | null
           id?: string
           round?: number
           scheduled_at?: string | null
+          stage?: Database["public"]["Enums"]["match_stage"]
           status?: Database["public"]["Enums"]["match_status"]
           team_a_id: string
           team_b_id: string
@@ -190,9 +256,11 @@ export type Database = {
           best_of?: number
           competition_id?: string
           created_at?: string
+          forfeited_by?: string | null
           id?: string
           round?: number
           scheduled_at?: string | null
+          stage?: Database["public"]["Enums"]["match_stage"]
           status?: Database["public"]["Enums"]["match_status"]
           team_a_id?: string
           team_b_id?: string
@@ -203,6 +271,13 @@ export type Database = {
             columns: ["competition_id"]
             isOneToOne: false
             referencedRelation: "competitions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "matches_forfeited_by_fkey"
+            columns: ["forfeited_by"]
+            isOneToOne: false
+            referencedRelation: "teams"
             referencedColumns: ["id"]
           },
           {
@@ -511,14 +586,42 @@ export type Database = {
     }
     Functions: {
       accept_team_invite: { Args: { invite_id: string }; Returns: undefined }
+      approve_reschedule: {
+        Args: { p_reschedule_id: string }
+        Returns: undefined
+      }
+      captain_team_in_match: { Args: { p_match_id: string }; Returns: string }
+      forfeit_match: { Args: { p_match_id: string }; Returns: undefined }
       is_comp_admin: { Args: { comp_id: string }; Returns: boolean }
       is_team_captain: { Args: { t_id: string }; Returns: boolean }
+      propose_reschedule: {
+        Args: { p_match_id: string; p_proposed_at: string }
+        Returns: undefined
+      }
+      publish_schedule: { Args: { p_comp_id: string }; Returns: undefined }
+      reject_reschedule: {
+        Args: { p_reschedule_id: string }
+        Returns: undefined
+      }
+      reopen_competition: { Args: { p_comp_id: string }; Returns: undefined }
+      start_competition: { Args: { p_comp_id: string }; Returns: undefined }
+      swap_match_teams: {
+        Args: {
+          p_match_a: string
+          p_match_b: string
+          p_slot_a: string
+          p_slot_b: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       competition_status: "draft" | "open" | "active" | "completed"
       competition_type: "league" | "tournament"
       invite_status: "pending" | "accepted" | "declined"
+      match_stage: "regular" | "playoff"
       match_status: "scheduled" | "live" | "completed" | "cancelled"
+      reschedule_status: "pending" | "approved" | "rejected" | "cancelled"
       signup_status: "pending" | "accepted" | "rejected"
       submission_status: "pending" | "verified" | "rejected"
       team_role: "captain" | "member"
@@ -652,7 +755,9 @@ export const Constants = {
       competition_status: ["draft", "open", "active", "completed"],
       competition_type: ["league", "tournament"],
       invite_status: ["pending", "accepted", "declined"],
+      match_stage: ["regular", "playoff"],
       match_status: ["scheduled", "live", "completed", "cancelled"],
+      reschedule_status: ["pending", "approved", "rejected", "cancelled"],
       signup_status: ["pending", "accepted", "rejected"],
       submission_status: ["pending", "verified", "rejected"],
       team_role: ["captain", "member"],

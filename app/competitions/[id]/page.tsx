@@ -2,7 +2,20 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getCompetition } from "@/lib/queries/competitions";
 import { getMyTeams } from "@/lib/queries/teams";
-import { signupTeam, setSignupStatus, withdrawSignup } from "../actions";
+import {
+  signupTeam,
+  setSignupStatus,
+  withdrawSignup,
+  updatePlayoffTeams,
+  swapTeams,
+  startCompetition,
+  updateMatchTime,
+  publishSchedule,
+  reopenCompetition
+} from "../actions";
+import { getMatches } from "@/lib/queries/matches";
+import Button from "@/components/ui/Button";
+import SwapTool from "@/components/ui/SwapTool";
 
 export default async function CompetitionPage({
   params,
@@ -39,6 +52,19 @@ export default async function CompetitionPage({
 
   const accepted = comp.signups.filter((s) => s.status === "accepted");
   const pending = comp.signups.filter((s) => s.status === "pending");
+
+  const matches = await getMatches(comp.id);
+  const rounds = [...new Set(matches.map((m) => m.round))].sort(
+    (a, b) => a - b
+  );
+  const fmt = (iso: string | null) =>
+    iso
+      ? new Date(iso).toLocaleString("da-DK", {
+          dateStyle: "medium",
+          timeStyle: "short",
+          timeZone: "Europe/Copenhagen"
+        })
+      : "TBD";
 
   return (
     <div className="max-w-2xl">
@@ -146,6 +172,112 @@ export default async function CompetitionPage({
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Start button (open → draft) */}
+      {isAdmin && comp.status === "open" && accepted.length >= 2 && (
+        <form action={startCompetition} className="mb-8">
+          <input type="hidden" name="competition_id" value={comp.id} />
+          <Button>Start competition — generate schedule</Button>
+        </form>
+      )}
+
+      {/* Schedule */}
+      {matches.length > 0 && (
+        <div className="mb-8">
+          <h2 className="mb-2 font-semibold">
+            Schedule{" "}
+            {comp.status === "draft" && "(draft — only admins can see this)"}
+          </h2>
+          {rounds.map((r) => (
+            <div key={r} className="mb-4">
+              <h3 className="mb-1 text-sm font-medium text-gray-500">
+                Round {r}
+              </h3>
+              <ul className="flex flex-col gap-1">
+                {matches
+                  .filter((m) => m.round === r)
+                  .map((m) => (
+                    <li
+                      key={m.id}
+                      className="flex items-center justify-between rounded border p-3 text-sm"
+                    >
+                      <span>
+                        {m.team_a.name} vs {m.team_b.name}
+                      </span>
+                      {comp.status === "draft" && isAdmin ? (
+                        <form
+                          action={updateMatchTime}
+                          className="flex items-center gap-2"
+                        >
+                          <input
+                            type="hidden"
+                            name="competition_id"
+                            value={comp.id}
+                          />
+                          <input type="hidden" name="match_id" value={m.id} />
+                          <input
+                            type="datetime-local"
+                            name="scheduled_at"
+                            defaultValue={m.scheduled_at?.slice(0, 16) ?? ""}
+                            className="rounded border p-1 text-xs"
+                          />
+                          <button className="rounded border px-2 py-1 text-xs hover:bg-gray-100">
+                            Save
+                          </button>
+                        </form>
+                      ) : (
+                        <span className="text-gray-500">
+                          {fmt(m.scheduled_at)}
+                        </span>
+                      )}
+                    </li>
+                  ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Draft tools: swap + playoff size + publish */}
+      {isAdmin && comp.status === "draft" && (
+        <div className="mb-8 flex flex-col gap-4 max-w-md">
+          <div>
+            <h3 className="mb-1 text-sm font-medium">Swap two teams</h3>
+            <SwapTool matches={matches} competitionId={comp.id} />
+          </div>
+
+          <form action={updatePlayoffTeams} className="flex items-center gap-2">
+            <input type="hidden" name="competition_id" value={comp.id} />
+            <label className="text-sm">Playoff teams</label>
+            <input
+              type="number"
+              name="playoff_teams"
+              min={0}
+              defaultValue={
+                (comp.settings as { playoff_teams?: number })?.playoff_teams ??
+                0
+              }
+              className="w-20 rounded border p-1 text-sm"
+            />
+            <button className="rounded border px-2 py-1 text-xs hover:bg-gray-100">
+              Save
+            </button>
+          </form>
+
+          <form action={reopenCompetition}>
+            <input type="hidden" name="competition_id" value={comp.id} />
+            <button className="rounded border border-red-300 px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+              Reopen signups (discard schedule)
+            </button>
+          </form>
+          <form action={publishSchedule}>
+            <input type="hidden" name="competition_id" value={comp.id} />
+            <button className="rounded bg-black px-4 py-2 text-sm text-white">
+              Publish schedule
+            </button>
+          </form>
         </div>
       )}
     </div>

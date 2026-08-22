@@ -378,3 +378,434 @@ create policy "captain withdraws signup" on signups
 
 create policy "admins remove signups" on signups
   for delete using (public.is_comp_admin(competition_id));
+
+  -- ===== RUN THIS BLOCK FIRST, ALONE =====
+alter type competition_status add value if not exists 'draft' before 'active';
+create type match_stage as enum ('regular', 'playoff');
+create type reschedule_status as enum ('pending', 'approved', 'rejected', 'cancelled');
+
+-- ===== THEN THE REST =====
+alter table matches add column stage match_stage not null default 'regular';
+alter table matches add column forfeited_by uuid references teams(id);
+
+create table match_reschedules (
+  id uuid primary key default gen_random_uuid(),
+  match_id uuid not null references matches(id) on delete cascade,
+  proposed_at timestamptz not null,
+  requested_by uuid not null references users(id),
+  opponent_approved_by uuid references users(id),
+  admin_approved_by uuid references users(id),
+  status reschedule_status not null default 'pending',
+  created_at timestamptz not null default now()
+);
+
+alter table match_reschedules enable row level security;
+
+create policy "public read" on match_reschedules for select using (true);
+
+-- Helper: is user a captain of one of the match's teams? Returns that team id.
+create function public.captain_team_in_match(p_match_id uuid)
+returns uuid
+language sql
+security definer set search_path = ''
+stable
+as $$
+  select tm.team_id
+  from public.matches m
+  join public.team_members tm
+    on tm.team_id in (m.team_a_id, m.team_b_id)
+  where m.id = p_match_id
+    and tm.user_id = auth.uid()
+    and tm.role = 'captain'
+  limit 1;
+$$;
+
+-- Propose: only a participating captain, only one reschedule ever per match
+create function public.propose_reschedule(p_match_id uuid, p_proposed_at timestamptz)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  m record;
+  my_team uuid;
+begin
+  select * into m from public.matches
+  where id = p_match_id and status = 'scheduled';
+  if m is null then raise exception 'Match not found or not reschedulable'; end if;
+
+  my_team := public.captain_team_in_match(p_match_id);
+  if my_team is null then raise exception 'Only a participating captain can propose'; end if;
+
+  if exists (select 1 from public.match_reschedules
+             where match_id = p_match_id and status in ('pending', 'approved')) then
+    raise exception 'This match has already used its reschedule';
+  end if;
+
+  if m.scheduled_at is null then raise exception 'Match has no scheduled time yet'; end if;
+  if p_proposed_at <= m.scheduled_at then
+    raise exception 'Proposed time must be after the current time slot';
+  end if;
+  if p_proposed_at > m.scheduled_at + interval '7 days' then
+    raise exception 'Matches can be moved at most 1 week';
+  end if;
+
+  insert into public.match_reschedules (match_id, proposed_at, requested_by)
+  values (p_match_id, p_proposed_at, auth.uid());
+end;
+$$;
+
+-- Approve: opposing captain and comp admin each fill their slot; both filled → applied
+create function public.approve_reschedule(p_reschedule_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  req record;
+  m record;
+  my_team uuid;
+  requester_team uuid;
+  is_admin boolean;
+  did_something boolean := false;
+begin
+  select * into req from public.match_reschedules
+  where id = p_reschedule_id and status = 'pending';
+  if req is null then raise exception 'Request not found or not pending'; end if;
+
+  select * into m from public.matches where id = req.match_id;
+  is_admin := public.is_comp_admin(m.competition_id);
+  my_team := public.captain_team_in_match(req.match_id);
+
+  select public.captain_team_in_match(req.match_id) into requester_team;
+  -- requester's team: derive from requested_by instead
+  select tm.team_id into requester_team
+  from public.team_members tm
+  where tm.user_id = req.requested_by
+    and tm.team_id in (m.team_a_id, m.team_b_id)
+  limit 1;
+
+  -- Opposing captain approval
+  if my_team is not null and my_team <> requester_team
+     and req.opponent_approved_by is null then
+    update public.match_reschedules
+    set opponent_approved_by = auth.uid() where id = p_reschedule_id;
+    did_something := true;
+  end if;
+
+  -- Admin approval
+  if is_admin and req.admin_approved_by is null then
+    update public.match_reschedules
+    set admin_approved_by = auth.uid() where id = p_reschedule_id;
+    did_something := true;
+  end if;
+
+  if not did_something then
+    raise exception 'Nothing for you to approve on this request';
+  end if;
+
+  -- Both slots filled → apply
+  select * into req from public.match_reschedules where id = p_reschedule_id;
+  if req.opponent_approved_by is not null and req.admin_approved_by is not null then
+    update public.matches set scheduled_at = req.proposed_at where id = req.match_id;
+    update public.match_reschedules set status = 'approved' where id = p_reschedule_id;
+  end if;
+end;
+$$;
+
+-- Reject: opposing captain or admin kills it
+create function public.reject_reschedule(p_reschedule_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  req record;
+  m record;
+  my_team uuid;
+  requester_team uuid;
+begin
+  select * into req from public.match_reschedules
+  where id = p_reschedule_id and status = 'pending';
+  if req is null then raise exception 'Request not found or not pending'; end if;
+
+  select * into m from public.matches where id = req.match_id;
+  select tm.team_id into requester_team
+  from public.team_members tm
+  where tm.user_id = req.requested_by
+    and tm.team_id in (m.team_a_id, m.team_b_id)
+  limit 1;
+  my_team := public.captain_team_in_match(req.match_id);
+
+  if public.is_comp_admin(m.competition_id)
+     or (my_team is not null and my_team <> requester_team) then
+    update public.match_reschedules set status = 'rejected' where id = p_reschedule_id;
+  else
+    raise exception 'Not allowed to reject this request';
+  end if;
+end;
+$$;
+
+-- Forfeit: participating captain concedes; opponent wins by FF
+create function public.forfeit_match(p_match_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  my_team uuid;
+begin
+  my_team := public.captain_team_in_match(p_match_id);
+  if my_team is null then raise exception 'Only a participating captain can forfeit'; end if;
+
+  update public.matches
+  set forfeited_by = my_team, status = 'completed'
+  where id = p_match_id and status = 'scheduled';
+
+  if not found then raise exception 'Match not found or already completed'; end if;
+
+  -- Void any open reschedule
+  update public.match_reschedules
+  set status = 'cancelled'
+  where match_id = p_match_id and status = 'pending';
+end;
+$$;
+
+-- Pairwise team swap between two draft matches (admin, draft phase only)
+create function public.swap_match_teams(
+  p_match_a uuid, p_slot_a text,
+  p_match_b uuid, p_slot_b text
+)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  ma record; mb record;
+  comp record;
+  team_x uuid; team_y uuid;
+begin
+  select * into ma from public.matches where id = p_match_a;
+  select * into mb from public.matches where id = p_match_b;
+  if ma is null or mb is null then raise exception 'Match not found'; end if;
+  if ma.competition_id <> mb.competition_id then
+    raise exception 'Matches must be in the same competition';
+  end if;
+
+  select * into comp from public.competitions where id = ma.competition_id;
+  if comp.status <> 'draft' then raise exception 'Swaps only in draft phase'; end if;
+  if not public.is_comp_admin(comp.id) then raise exception 'Admins only'; end if;
+  if p_slot_a not in ('a','b') or p_slot_b not in ('a','b') then
+    raise exception 'Slots must be a or b';
+  end if;
+
+  team_x := case p_slot_a when 'a' then ma.team_a_id else ma.team_b_id end;
+  team_y := case p_slot_b when 'a' then mb.team_a_id else mb.team_b_id end;
+
+  if p_slot_a = 'a' then update public.matches set team_a_id = team_y where id = p_match_a;
+  else update public.matches set team_b_id = team_y where id = p_match_a; end if;
+
+  if p_slot_b = 'a' then update public.matches set team_a_id = team_x where id = p_match_b;
+  else update public.matches set team_b_id = team_x where id = p_match_b; end if;
+end;
+$$;
+
+-- Publish: draft → active
+create function public.publish_schedule(p_comp_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+begin
+  if not public.is_comp_admin(p_comp_id) then raise exception 'Admins only'; end if;
+  update public.competitions set status = 'active'
+  where id = p_comp_id and status = 'draft';
+  if not found then raise exception 'Competition not in draft'; end if;
+end;
+$$;
+
+create or replace function public.start_competition(p_comp_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  comp record;
+  team_ids uuid[];
+  n int;
+  rounds int;
+  i int; r int; slot int;
+  a uuid; b uuid;
+  v_best_of int;
+  s_date date;
+  interval_days int;
+  times jsonb;
+  tcount int;
+  mtime time;
+begin
+  if not public.is_comp_admin(p_comp_id) then
+    raise exception 'Only competition admins can start the competition';
+  end if;
+
+  select * into comp from public.competitions
+  where id = p_comp_id and status = 'open';
+  if comp is null then raise exception 'Competition not found or not open'; end if;
+
+  if comp.settings->>'start_date' is null then
+    raise exception 'Competition settings need a start_date';
+  end if;
+  s_date := (comp.settings->>'start_date')::date;
+  interval_days := coalesce((comp.settings->>'round_interval_days')::int, 7);
+  times := coalesce(comp.settings->'match_times', '["19:00"]'::jsonb);
+  tcount := jsonb_array_length(times);
+  v_best_of := coalesce((comp.settings->>'best_of')::int, 3);
+
+  select coalesce(array_agg(team_id order by created_at), '{}')
+  into team_ids
+  from public.signups
+  where competition_id = p_comp_id and status = 'accepted';
+
+  n := array_length(team_ids, 1);
+  if n is null or n < 2 then raise exception 'Need at least 2 accepted teams'; end if;
+
+  if comp.type = 'league' then
+    if n % 2 = 1 then
+      team_ids := team_ids || null::uuid;
+      n := n + 1;
+    end if;
+    rounds := n - 1;
+
+    for r in 1..rounds loop
+      slot := 0;
+      for i in 1..(n / 2) loop
+        a := team_ids[i];
+        b := team_ids[n + 1 - i];
+        if a is not null and b is not null then
+          mtime := (times->>(slot % tcount))::time;
+          insert into public.matches
+            (competition_id, team_a_id, team_b_id, round, best_of, scheduled_at)
+          values (
+            p_comp_id, a, b, r, v_best_of,
+            ((s_date + (r - 1) * interval_days) + mtime) at time zone 'Europe/Copenhagen'
+          );
+          slot := slot + 1;
+        end if;
+      end loop;
+      team_ids := team_ids[1:1] || team_ids[n:n] || team_ids[2:n-1];
+    end loop;
+
+  else
+    select array_agg(t order by random()) into team_ids
+    from unnest(team_ids) t;
+
+    slot := 0;
+    i := 1;
+    while i < n loop
+      mtime := (times->>(slot % tcount))::time;
+      insert into public.matches
+        (competition_id, team_a_id, team_b_id, round, best_of, scheduled_at)
+      values (
+        p_comp_id, team_ids[i], team_ids[i + 1], 1, v_best_of,
+        (s_date + mtime) at time zone 'Europe/Copenhagen'
+      );
+      slot := slot + 1;
+      i := i + 2;
+    end loop;
+  end if;
+
+  update public.competitions set status = 'draft' where id = p_comp_id;
+end;
+$$;
+
+-- Draft schedules are admin-only; matches go public when the competition is
+drop policy "public read" on matches;
+create policy "read matches" on matches for select using (
+  public.is_comp_admin(competition_id)
+  or exists (
+    select 1 from competitions c
+    where c.id = matches.competition_id and c.status in ('active', 'completed')
+  )
+);
+
+create function public.reopen_competition(p_comp_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+begin
+  if not public.is_comp_admin(p_comp_id) then
+    raise exception 'Admins only';
+  end if;
+
+  delete from public.matches where competition_id = p_comp_id;
+
+  update public.competitions set status = 'open'
+  where id = p_comp_id and status = 'draft';
+
+  if not found then
+    raise exception 'Competition is not in draft';
+  end if;
+end;
+$$;
+
+create or replace function public.swap_match_teams(
+  p_match_a uuid, p_slot_a text,
+  p_match_b uuid, p_slot_b text
+)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  ma record; mb record;
+  comp record;
+  team_x uuid; team_y uuid;
+  other_a uuid; other_b uuid;
+begin
+  if p_match_a = p_match_b then
+    raise exception 'Pick two different matches';
+  end if;
+
+  select * into ma from public.matches where id = p_match_a;
+  select * into mb from public.matches where id = p_match_b;
+  if ma is null or mb is null then raise exception 'Match not found'; end if;
+  if ma.competition_id <> mb.competition_id then
+    raise exception 'Matches must be in the same competition';
+  end if;
+
+  select * into comp from public.competitions where id = ma.competition_id;
+  if comp.status <> 'draft' then raise exception 'Swaps only in draft phase'; end if;
+  if not public.is_comp_admin(comp.id) then raise exception 'Admins only'; end if;
+  if p_slot_a not in ('a','b') or p_slot_b not in ('a','b') then
+    raise exception 'Slots must be a or b';
+  end if;
+
+  team_x := case p_slot_a when 'a' then ma.team_a_id else ma.team_b_id end;
+  team_y := case p_slot_b when 'a' then mb.team_a_id else mb.team_b_id end;
+  other_a := case p_slot_a when 'a' then ma.team_b_id else ma.team_a_id end;
+  other_b := case p_slot_b when 'a' then mb.team_b_id else mb.team_a_id end;
+
+  if team_x = team_y then
+    raise exception 'Same team selected twice — nothing to swap';
+  end if;
+  if team_y = other_a or team_x = other_b then
+    raise exception 'A team cannot play itself';
+  end if;
+
+  if p_slot_a = 'a' then update public.matches set team_a_id = team_y where id = p_match_a;
+  else update public.matches set team_b_id = team_y where id = p_match_a; end if;
+
+  if p_slot_b = 'a' then update public.matches set team_a_id = team_x where id = p_match_b;
+  else update public.matches set team_b_id = team_x where id = p_match_b; end if;
+
+  -- Round-robin integrity: no pairing may occur twice
+  if exists (
+    select 1 from public.matches
+    where competition_id = comp.id and stage = 'regular'
+    group by least(team_a_id, team_b_id), greatest(team_a_id, team_b_id)
+    having count(*) > 1
+  ) then
+    raise exception 'Swap rejected — it would make two teams meet twice';
+  end if;
+end;
+$$;
