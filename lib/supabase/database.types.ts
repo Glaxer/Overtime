@@ -586,12 +586,23 @@ export type Database = {
     }
     Functions: {
       accept_team_invite: { Args: { invite_id: string }; Returns: undefined }
+      advance_bracket: { Args: { p_comp_id: string }; Returns: undefined }
       approve_reschedule: {
         Args: { p_reschedule_id: string }
         Returns: undefined
       }
       captain_team_in_match: { Args: { p_match_id: string }; Returns: string }
+      competition_standings: {
+        Args: { p_comp_id: string }
+        Returns: {
+          game_diff: number
+          game_wins: number
+          points: number
+          team_id: string
+        }[]
+      }
       forfeit_match: { Args: { p_match_id: string }; Returns: undefined }
+      generate_playoffs: { Args: { p_comp_id: string }; Returns: undefined }
       is_comp_admin: { Args: { comp_id: string }; Returns: boolean }
       is_team_captain: { Args: { t_id: string }; Returns: boolean }
       propose_reschedule: {

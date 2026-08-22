@@ -75,14 +75,19 @@ export default async function NewCompetitionPage() {
             </option>
           ))}
         </select>
-        <input
+        <select
           name="playoff_teams"
-          type="number"
-          min={0}
-          defaultValue={4}
           required
+          defaultValue={0}
           className="rounded border p-2"
-        />
+        >
+          <option value={0}>No playoffs</option>
+          {[2, 4, 8, 16].map((n) => (
+            <option key={n} value={n}>
+              Top {n}
+            </option>
+          ))}
+        </select>
 
         <button className="rounded bg-black p-2 text-white">
           Create competition

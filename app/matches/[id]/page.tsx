@@ -13,6 +13,7 @@ import {
   proposeReschedule
 } from "../actions";
 import Button from "@/components/ui/Button";
+import { toLocalInputValue } from "@/lib/datetime";
 
 export default async function MatchPage({
   params
@@ -66,9 +67,9 @@ export default async function MatchPage({
 
   // Max +1 week, for the datetime input's max attribute
   const maxDate = match.scheduled_at
-    ? new Date(new Date(match.scheduled_at).getTime() + 7 * 864e5)
-        .toISOString()
-        .slice(0, 16)
+    ? toLocalInputValue(
+        new Date(new Date(match.scheduled_at).getTime() + 7 * 864e5)
+      )
     : undefined;
 
   const fmt = (iso: string | null) =>
@@ -227,7 +228,7 @@ export default async function MatchPage({
               type="datetime-local"
               name="proposed_at"
               required
-              min={match.scheduled_at.slice(0, 16)}
+              min={toLocalInputValue(match.scheduled_at)}
               max={maxDate}
               className="flex-1 rounded border p-1 text-sm"
             />

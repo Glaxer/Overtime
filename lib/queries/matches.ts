@@ -6,7 +6,7 @@ export async function getMatches(competitionId: string) {
     .from("matches")
     .select(
       `
-        id, round, status, best_of, scheduled_at, forfeited_by,
+        id, round, status, best_of, scheduled_at, forfeited_by, stage,
         team_a:teams!matches_team_a_id_fkey ( id, name ),
         team_b:teams!matches_team_b_id_fkey ( id, name ),
         games ( game_number, score_a, score_b )
@@ -67,11 +67,11 @@ export async function getMyUpcomingMatches(userId: string) {
     .from("matches")
     .select(
       `
-      id, round, scheduled_at, status,
-      competition:competitions ( id, name, status ),
-      team_a:teams!matches_team_a_id_fkey ( id, name ),
-      team_b:teams!matches_team_b_id_fkey ( id, name )
-    `
+        id, round, scheduled_at, status,
+        competition:competitions ( id, name, status ),
+        team_a:teams!matches_team_a_id_fkey ( id, name ),
+        team_b:teams!matches_team_b_id_fkey ( id, name )
+      `
     )
     .in("status", ["scheduled"])
     .or(
@@ -103,14 +103,14 @@ export async function getRescheduleRequestsForMe(userId: string) {
     .from("match_reschedules")
     .select(
       `
-      id, proposed_at, requested_by, opponent_approved_by, admin_approved_by,
-      match:matches (
-        id, scheduled_at, competition_id,
-        team_a:teams!matches_team_a_id_fkey ( id, name ),
-        team_b:teams!matches_team_b_id_fkey ( id, name )
-      ),
-      requester:users!match_reschedules_requested_by_fkey ( display_name )
-    `
+        id, proposed_at, requested_by, opponent_approved_by, admin_approved_by,
+        match:matches (
+          id, scheduled_at, competition_id,
+          team_a:teams!matches_team_a_id_fkey ( id, name ),
+          team_b:teams!matches_team_b_id_fkey ( id, name )
+        ),
+        requester:users!match_reschedules_requested_by_fkey ( display_name )
+      `
     )
     .eq("status", "pending")
     .neq("requested_by", userId); // never asked to approve your own request

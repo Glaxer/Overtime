@@ -121,14 +121,24 @@ export async function publishSchedule(formData: FormData) {
 export async function updateMatchTime(formData: FormData) {
   const supabase = await createClient();
   const compId = formData.get("competition_id") as string;
+  const when = new Date(formData.get("scheduled_at") as string);
+
+  if (Number.isNaN(when.getTime())) {
+    redirect(
+      `/competitions/${compId}?error=${encodeURIComponent("Invalid date")}`
+    );
+  }
+  if (when.getTime() < Date.now()) {
+    redirect(
+      `/competitions/${compId}?error=${encodeURIComponent("Match time must be in the future")}`
+    );
+  }
+
   const { error } = await supabase
     .from("matches")
-    .update({
-      scheduled_at: new Date(
-        formData.get("scheduled_at") as string
-      ).toISOString()
-    })
+    .update({ scheduled_at: when.toISOString() })
     .eq("id", formData.get("match_id") as string);
+
   if (error)
     redirect(
       `/competitions/${compId}?error=${encodeURIComponent(error.message)}`
@@ -199,4 +209,19 @@ export async function reopenCompetition(formData: FormData) {
       `/competitions/${compId}?error=${encodeURIComponent(error.message)}`
     );
   revalidatePath(`/competitions/${compId}`);
+}
+
+export async function generatePlayoffs(formData: FormData) {
+  const supabase = await createClient();
+  const compId = formData.get("competition_id") as string;
+  const { error } = await supabase.rpc("generate_playoffs", {
+    p_comp_id: compId
+  });
+  if (error)
+    redirect(
+      `/competitions/${compId}?error=${encodeURIComponent(error.message)}`
+    );
+  redirect(
+    `/competitions/${compId}?success=${encodeURIComponent("Playoff bracket generated")}`
+  );
 }

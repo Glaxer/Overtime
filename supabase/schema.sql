@@ -854,3 +854,367 @@ begin
   update public.matches set status = 'completed' where id = m.id;
 end;
 $$;
+
+-- Standings-ordered team list (mirrors getStandings' logic, in SQL)
+create or replace function public.competition_standings(p_comp_id uuid)
+returns table (team_id uuid, points int, game_diff int, game_wins int)
+language sql
+security definer set search_path = ''
+stable
+as $$
+  with accepted as (
+    select s.team_id from public.signups s
+    where s.competition_id = p_comp_id and s.status = 'accepted'
+  ),
+  played as (
+    select
+      m.id, m.team_a_id, m.team_b_id, m.forfeited_by,
+      coalesce((select count(*) from public.games g
+                where g.match_id = m.id and g.score_a > g.score_b), 0) as ga,
+      coalesce((select count(*) from public.games g
+                where g.match_id = m.id and g.score_b > g.score_a), 0) as gb
+    from public.matches m
+    where m.competition_id = p_comp_id and m.stage = 'regular'
+      and (m.forfeited_by is not null
+           or exists (select 1 from public.games g where g.match_id = m.id))
+  ),
+  rows as (
+    select p.team_a_id as team_id,
+           case when p.forfeited_by is null then p.ga else 0 end as gw,
+           case when p.forfeited_by is null then p.gb else 0 end as gl,
+           case when (p.forfeited_by is not null and p.forfeited_by <> p.team_a_id)
+                     or (p.forfeited_by is null and p.ga > p.gb)
+                then 1 else 0 end as win
+    from played p
+    union all
+    select p.team_b_id,
+           case when p.forfeited_by is null then p.gb else 0 end,
+           case when p.forfeited_by is null then p.ga else 0 end,
+           case when (p.forfeited_by is not null and p.forfeited_by <> p.team_b_id)
+                     or (p.forfeited_by is null and p.gb > p.ga)
+                then 1 else 0 end
+    from played p
+  )
+  select
+    a.team_id,
+    coalesce(sum(r.win) * 3, 0)::int as points,
+    coalesce(sum(r.gw) - sum(r.gl), 0)::int as game_diff,
+    coalesce(sum(r.gw), 0)::int as game_wins
+  from accepted a
+  left join rows r on r.team_id = a.team_id
+  group by a.team_id
+  order by points desc, game_diff desc, game_wins desc;
+$$;
+
+-- Generate the playoff bracket's first round from the final table
+create or replace function public.generate_playoffs(p_comp_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  comp record;
+  n int;
+  seeds uuid[];
+  i int;
+  v_best_of int;
+begin
+  if not public.is_comp_admin(p_comp_id) then raise exception 'Admins only'; end if;
+
+  select * into comp from public.competitions
+  where id = p_comp_id and status = 'active';
+  if comp is null then raise exception 'Competition not active'; end if;
+
+  if exists (select 1 from public.matches
+             where competition_id = p_comp_id and stage = 'playoff') then
+    raise exception 'Playoffs already generated';
+  end if;
+
+  if exists (
+    select 1 from public.matches m
+    where m.competition_id = p_comp_id and m.stage = 'regular'
+      and m.status <> 'completed'
+  ) then
+    raise exception 'All regular season matches must be completed first';
+  end if;
+
+  n := coalesce((comp.settings->>'playoff_teams')::int, 0);
+  if n = 0 then raise exception 'This competition has no playoffs'; end if;
+  if n & (n - 1) <> 0 then raise exception 'Playoff size must be a power of two'; end if;
+
+  select array_agg(team_id) into seeds
+  from (select team_id from public.competition_standings(p_comp_id) limit n) t;
+
+  if array_length(seeds, 1) < n then
+    raise exception 'Not enough teams for a % team playoff', n;
+  end if;
+
+  v_best_of := coalesce((comp.settings->>'playoff_best_of')::int,
+                        (comp.settings->>'best_of')::int, 3);
+
+  -- Seed 1 vs N, 2 vs N-1, ...
+  for i in 1..(n / 2) loop
+    insert into public.matches
+      (competition_id, team_a_id, team_b_id, round, best_of, stage)
+    values (p_comp_id, seeds[i], seeds[n + 1 - i], 1, v_best_of, 'playoff');
+  end loop;
+end;
+$$;
+
+-- Advance the bracket: called automatically after each verification
+create or replace function public.advance_bracket(p_comp_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  last_round int;
+  unfinished int;
+  winners uuid[];
+  i int;
+  v_best_of int;
+begin
+  select max(round) into last_round from public.matches
+  where competition_id = p_comp_id and stage = 'playoff';
+  if last_round is null then return; end if;
+
+  select count(*) into unfinished from public.matches
+  where competition_id = p_comp_id and stage = 'playoff'
+    and round = last_round and status <> 'completed';
+  if unfinished > 0 then return; end if;
+
+  select array_agg(w order by ord) into winners
+  from (
+    select
+      row_number() over (order by m.created_at) as ord,
+      case
+        when m.forfeited_by is not null then
+          case when m.forfeited_by = m.team_a_id then m.team_b_id else m.team_a_id end
+        when (select count(*) from public.games g
+              where g.match_id = m.id and g.score_a > g.score_b)
+           > (select count(*) from public.games g
+              where g.match_id = m.id and g.score_b > g.score_a)
+        then m.team_a_id else m.team_b_id
+      end as w
+    from public.matches m
+    where m.competition_id = p_comp_id and m.stage = 'playoff' and m.round = last_round
+  ) t;
+
+  if array_length(winners, 1) = 1 then
+    update public.competitions set status = 'completed' where id = p_comp_id;
+    return;
+  end if;
+
+  select best_of into v_best_of from public.matches
+  where competition_id = p_comp_id and stage = 'playoff' and round = last_round
+  limit 1;
+
+  i := 1;
+  while i < array_length(winners, 1) loop
+    insert into public.matches
+      (competition_id, team_a_id, team_b_id, round, best_of, stage)
+    values (p_comp_id, winners[i], winners[i + 1], last_round + 1, v_best_of, 'playoff');
+    i := i + 2;
+  end loop;
+end;
+$$;
+
+create or replace function public.verify_submission(p_submission_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  sub record;
+  m record;
+  game jsonb;
+  i int := 0;
+begin
+  select * into sub from public.submissions
+  where id = p_submission_id and status = 'pending';
+  if sub is null then raise exception 'Submission not found or already handled'; end if;
+
+  select * into m from public.matches where id = sub.match_id;
+
+  if not public.is_comp_admin(m.competition_id) then
+    raise exception 'Only competition admins can verify';
+  end if;
+
+  if exists (select 1 from public.games where match_id = m.id) then
+    raise exception 'This match already has a verified result';
+  end if;
+
+  for game in select * from jsonb_array_elements(sub.payload->'games')
+  loop
+    i := i + 1;
+    insert into public.games (match_id, game_number, score_a, score_b)
+    values (m.id, i, (game->>'a')::int, (game->>'b')::int);
+  end loop;
+
+  update public.submissions
+  set status = 'verified', verified_by = auth.uid()
+  where id = p_submission_id;
+
+  update public.submissions
+  set status = 'rejected'
+  where match_id = m.id and status = 'pending' and id <> p_submission_id;
+
+  update public.matches set status = 'completed' where id = m.id;
+
+  -- Auto-advance the playoff bracket if this completed a playoff round
+  perform public.advance_bracket(m.competition_id);
+end;
+$$;
+
+create or replace function public.forfeit_match(p_match_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  my_team uuid;
+  v_comp_id uuid;
+begin
+  my_team := public.captain_team_in_match(p_match_id);
+  if my_team is null then raise exception 'Only a participating captain can forfeit'; end if;
+
+  update public.matches
+  set forfeited_by = my_team, status = 'completed'
+  where id = p_match_id and status = 'scheduled'
+  returning competition_id into v_comp_id;
+
+  if v_comp_id is null then raise exception 'Match not found or already completed'; end if;
+
+  update public.match_reschedules
+  set status = 'cancelled'
+  where match_id = p_match_id and status = 'pending';
+
+  perform public.advance_bracket(v_comp_id);
+end;
+$$;
+
+-- ============ 1. generate_playoffs (tiered best-of) ============
+create or replace function public.generate_playoffs(p_comp_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  comp record;
+  n int;
+  seeds uuid[];
+  i int;
+  v_best_of int;
+begin
+  if not public.is_comp_admin(p_comp_id) then raise exception 'Admins only'; end if;
+
+  select * into comp from public.competitions
+  where id = p_comp_id and status = 'active';
+  if comp is null then raise exception 'Competition not active'; end if;
+
+  if exists (select 1 from public.matches
+             where competition_id = p_comp_id and stage = 'playoff') then
+    raise exception 'Playoffs already generated';
+  end if;
+
+  if exists (
+    select 1 from public.matches m
+    where m.competition_id = p_comp_id and m.stage = 'regular'
+      and m.status <> 'completed'
+  ) then
+    raise exception 'All regular season matches must be completed first';
+  end if;
+
+  n := coalesce((comp.settings->>'playoff_teams')::int, 0);
+  if n = 0 then raise exception 'This competition has no playoffs'; end if;
+  if n & (n - 1) <> 0 then raise exception 'Playoff size must be a power of two'; end if;
+
+  select array_agg(team_id) into seeds
+  from (select team_id from public.competition_standings(p_comp_id) limit n) t;
+
+  if array_length(seeds, 1) < n then
+    raise exception 'Not enough teams for a % team playoff', n;
+  end if;
+
+  v_best_of := coalesce((comp.settings->>'playoff_best_of')::int,
+                        (comp.settings->>'best_of')::int, 5);
+
+  -- With only two teams, round 1 IS the grand final
+  if n = 2 then
+    v_best_of := coalesce((comp.settings->>'final_best_of')::int, v_best_of);
+  end if;
+
+  for i in 1..(n / 2) loop
+    insert into public.matches
+      (competition_id, team_a_id, team_b_id, round, best_of, stage)
+    values (p_comp_id, seeds[i], seeds[n + 1 - i], 1, v_best_of, 'playoff');
+  end loop;
+end;
+$$;
+
+-- ============ 2. advance_bracket (tiered best-of) ============
+create or replace function public.advance_bracket(p_comp_id uuid)
+returns void
+language plpgsql
+security definer set search_path = ''
+as $$
+declare
+  comp record;
+  last_round int;
+  unfinished int;
+  winners uuid[];
+  i int;
+  v_best_of int;
+begin
+  select max(round) into last_round from public.matches
+  where competition_id = p_comp_id and stage = 'playoff';
+  if last_round is null then return; end if;
+
+  select count(*) into unfinished from public.matches
+  where competition_id = p_comp_id and stage = 'playoff'
+    and round = last_round and status <> 'completed';
+  if unfinished > 0 then return; end if;
+
+  select array_agg(w order by ord) into winners
+  from (
+    select
+      row_number() over (order by m.created_at) as ord,
+      case
+        when m.forfeited_by is not null then
+          case when m.forfeited_by = m.team_a_id then m.team_b_id else m.team_a_id end
+        when (select count(*) from public.games g
+              where g.match_id = m.id and g.score_a > g.score_b)
+           > (select count(*) from public.games g
+              where g.match_id = m.id and g.score_b > g.score_a)
+        then m.team_a_id else m.team_b_id
+      end as w
+    from public.matches m
+    where m.competition_id = p_comp_id and m.stage = 'playoff' and m.round = last_round
+  ) t;
+
+  -- One winner left → the competition is decided
+  if array_length(winners, 1) = 1 then
+    update public.competitions set status = 'completed' where id = p_comp_id;
+    return;
+  end if;
+
+  select * into comp from public.competitions where id = p_comp_id;
+
+  if array_length(winners, 1) = 2 then
+    v_best_of := coalesce((comp.settings->>'final_best_of')::int,
+                          (comp.settings->>'playoff_best_of')::int,
+                          (comp.settings->>'best_of')::int, 7);
+  else
+    v_best_of := coalesce((comp.settings->>'playoff_best_of')::int,
+                          (comp.settings->>'best_of')::int, 5);
+  end if;
+
+  i := 1;
+  while i < array_length(winners, 1) loop
+    insert into public.matches
+      (competition_id, team_a_id, team_b_id, round, best_of, stage)
+    values (p_comp_id, winners[i], winners[i + 1], last_round + 1, v_best_of, 'playoff');
+    i := i + 2;
+  end loop;
+end;
+$$;
