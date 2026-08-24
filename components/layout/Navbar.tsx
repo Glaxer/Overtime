@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/(auth)/actions";
+import ThemeToggle from "../ui/ThemeToggle";
+import Button from "../ui/Button";
 
 export default async function Navbar() {
   const supabase = await createClient();
@@ -43,14 +45,15 @@ export default async function Navbar() {
       </nav>
 
       {/* Auth section — pinned to the bottom */}
-      <div className="mt-auto flex flex-col gap-2 border-t pt-4">
+      <div className="mt-auto flex flex-col gap-2 border-t border-border pt-4">
+        <ThemeToggle />
         {user ? (
           <>
             <span className="px-2 text-sm text-muted">{displayName}</span>
             <form action={logout}>
-              <button className="w-full rounded border border-border px-2 py-1.5 text-left text-sm hover:bg-surface">
+              <Button variant="secondary" className="w-full text-left">
                 Log out
-              </button>
+              </Button>
             </form>
           </>
         ) : (
