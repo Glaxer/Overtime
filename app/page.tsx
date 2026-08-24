@@ -13,13 +13,6 @@ export default function Home() {
       >
         Browse competitions
       </Link>
-
-      <Link
-        href="/competitions"
-        className="rounded bg-secondary px-4 py-2 text-sm font-medium text-on-accent hover:bg-secondary-hover"
-      >
-        Browse competitions
-      </Link>
     </div>
   );
 }
