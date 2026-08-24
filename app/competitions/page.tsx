@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { getCompetitions } from "@/lib/queries/competitions";
-import Button from "@/components/ui/Button";
 
 export default async function CompetitionsPage({
   searchParams
