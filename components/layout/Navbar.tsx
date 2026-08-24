@@ -36,12 +36,6 @@ export default async function Sidebar() {
           </Link>
         )}
         <Link
-          href="/titles"
-          className="rounded px-2 py-1.5 text-sm hover:bg-gray-100"
-        >
-          Titles
-        </Link>
-        <Link
           href="/competitions"
           className="rounded px-2 py-1.5 text-sm hover:bg-gray-100"
         >
