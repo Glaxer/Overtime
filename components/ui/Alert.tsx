@@ -20,36 +20,37 @@ export default function Alert() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  const paramVariant = PARAMS.find((p) => searchParams.get(p));
+  const paramMessage = paramVariant ? searchParams.get(paramVariant) : null;
+
   const [alert, setAlert] = useState<{
     variant: Variant;
     message: string;
   } | null>(null);
   const [leaving, setLeaving] = useState(false);
 
-  // Watch the URL for alert params
-  useEffect(() => {
-    const found = PARAMS.find((p) => searchParams.get(p));
-    if (!found) return;
-
-    setAlert({ variant: found, message: searchParams.get(found)! });
+  // Adjust state during render (allowed by React) rather than in an effect
+  if (paramVariant && paramMessage && paramMessage !== alert?.message) {
+    setAlert({ variant: paramVariant, message: paramMessage });
     setLeaving(false);
+  }
 
-    // Strip the param so the alert can't come back on refresh/share
+  // Effect now only cleans the URL — no setState
+  useEffect(() => {
+    if (!paramVariant) return;
     const params = new URLSearchParams(searchParams);
     PARAMS.forEach((p) => params.delete(p));
     router.replace(params.size ? `${pathname}?${params}` : pathname, {
       scroll: false
     });
-  }, [searchParams, pathname, router]);
+  }, [paramVariant, searchParams, pathname, router]);
 
-  // Auto-dismiss
   useEffect(() => {
     if (!alert || leaving) return;
     const timer = setTimeout(() => setLeaving(true), DISMISS_MS);
     return () => clearTimeout(timer);
   }, [alert, leaving]);
 
-  // Remove from DOM after the exit transition
   useEffect(() => {
     if (!leaving) return;
     const timer = setTimeout(() => setAlert(null), 300);
@@ -60,9 +61,9 @@ export default function Alert() {
 
   return (
     <div
-      className={`fixed left-1/2 top-4 z-50 -translate-x-1/2 transition-all duration-300 ${
+      className={`animate-alert-in fixed left-1/2 top-4 z-50 -translate-x-1/2 transition-all duration-300 ${
         leaving ? "-translate-y-24 opacity-0" : "translate-y-0 opacity-100"
-      } animate-alert-in`}
+      }`}
     >
       <div
         className={`flex items-center gap-3 rounded border px-4 py-2 text-sm shadow-lg ${styles[alert.variant]}`}
