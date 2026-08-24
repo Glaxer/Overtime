@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/(auth)/actions";
 
-export default async function Sidebar() {
+export default async function Navbar() {
   const supabase = await createClient();
   const {
     data: { user }
@@ -19,8 +19,7 @@ export default async function Sidebar() {
   }
 
   return (
-    <aside className="flex w-56 shrink-0 flex-col border-r p-4">
-      {/* Logo */}
+    <aside className="flex h-full flex-col border-r p-4">
       <Link href="/" className="mb-8 text-xl font-bold">
         Overtime
       </Link>

@@ -5,6 +5,7 @@ import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { Suspense } from "react";
 import Alert from "@/components/ui/Alert";
+import NavShell from "@/components/layout/NavShell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,14 +30,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Suspense>
           <Alert />
         </Suspense>
-        <div className="flex min-h-screen">
-          <Navbar />
-          <main className="flex-1 p-8">{children}</main>
+        <div className="flex min-h-screen flex-col md:flex-row">
+          <NavShell>
+            <Navbar />
+          </NavShell>
+          <main className="min-w-0 flex-1 p-4 md:p-8">{children}</main>
         </div>
         <Footer />
       </body>
