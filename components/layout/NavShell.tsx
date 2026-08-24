@@ -1,16 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 
 export default function NavShell({ children }: { children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
   const pathname = usePathname();
+  const [openedOn, setOpenedOn] = useState<string | null>(null);
 
-  // Close the drawer whenever the route changes
-  useEffect(() => {
-    setOpen(false);
-  }, [pathname]);
+  // Open only while we're still on the path where it was opened
+  const open = openedOn === pathname;
 
   return (
     <>
@@ -18,9 +16,9 @@ export default function NavShell({ children }: { children: React.ReactNode }) {
       <div className="flex items-center justify-between border-b p-4 md:hidden">
         <span className="text-lg font-bold">Overtime</span>
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => setOpenedOn(pathname)}
           aria-label="Open menu"
-          className="rounded border px-3 py-1 text-sm"
+          className="rounded border border-border px-3 py-1 text-sm"
         >
           ☰
         </button>
@@ -37,7 +35,7 @@ export default function NavShell({ children }: { children: React.ReactNode }) {
       >
         {/* Close button — mobile only */}
         <button
-          onClick={() => setOpen(false)}
+          onClick={() => setOpenedOn(null)}
           aria-label="Close menu"
           className="absolute right-4 top-4 text-2xl leading-none md:hidden"
         >

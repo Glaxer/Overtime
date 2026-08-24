@@ -46,7 +46,10 @@ export default async function DashboardPage() {
           <h2 className="mb-2 font-semibold">Awaiting your approval</h2>
           <ul className="flex flex-col gap-2">
             {reschedules.map((r) => (
-              <li key={r.id} className="rounded border p-3 text-sm">
+              <li
+                key={r.id}
+                className="rounded border border-border p-3 text-sm"
+              >
                 <p>
                   <Link
                     href={`/matches/${r.match.id}`}
@@ -55,12 +58,12 @@ export default async function DashboardPage() {
                     {r.match.team_a.name} vs {r.match.team_b.name}
                   </Link>
                 </p>
-                <p className="mt-1 text-gray-500">
+                <p className="mt-1 text-muted">
                   {r.requester.display_name} wants to move it from{" "}
                   {fmt(r.match.scheduled_at)} to{" "}
                   <span className="font-medium">{fmt(r.proposed_at)}</span>
                 </p>
-                <p className="mt-1 text-xs text-gray-500">
+                <p className="mt-1 text-xs text-muted">
                   Opponent: {r.opponent_approved_by ? "✓" : "waiting"} · Admin:{" "}
                   {r.admin_approved_by ? "✓" : "waiting"}
                 </p>
@@ -90,7 +93,7 @@ export default async function DashboardPage() {
             {upcoming.map((m) => (
               <li
                 key={m.id}
-                className="flex items-center justify-between rounded border p-3 text-sm"
+                className="flex items-center justify-between rounded border border-border p-3 text-sm"
               >
                 <span>
                   <Link
@@ -99,11 +102,11 @@ export default async function DashboardPage() {
                   >
                     {m.team_a.name} vs {m.team_b.name}
                   </Link>
-                  <span className="ml-2 text-gray-500">
+                  <span className="ml-2 text-muted">
                     {m.competition.name} · Round {m.round}
                   </span>
                 </span>
-                <span className="text-gray-500">{fmt(m.scheduled_at)}</span>
+                <span className="text-muted">{fmt(m.scheduled_at)}</span>
               </li>
             ))}
           </ul>
@@ -118,11 +121,11 @@ export default async function DashboardPage() {
             {invites.map((inv) => (
               <li
                 key={inv.id}
-                className="flex items-center justify-between rounded border p-3"
+                className="flex items-center justify-between rounded border border-border p-3"
               >
                 <span className="text-sm">
                   <span className="font-medium">{inv.team.name}</span>
-                  <span className="text-gray-500">
+                  <span className="text-muted">
                     {" "}
                     — invited by {inv.inviter.display_name}
                   </span>
@@ -154,20 +157,18 @@ export default async function DashboardPage() {
                 className="text-sm hover:underline"
               >
                 {m.team.name}
-                <span className="ml-2 text-gray-500">
-                  ({m.team.title.name})
-                </span>
+                <span className="ml-2 text-muted">({m.team.title.name})</span>
                 {m.role === "captain" && " ⭐"}
               </Link>
             </li>
           ))}
           {teams.length === 0 && (
-            <li className="text-sm text-gray-500">No teams yet</li>
+            <li className="text-sm text-muted">No teams yet</li>
           )}
         </ul>
         <Link
           href="/teams/new"
-          className="mt-4 inline-block rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
+          className="rounded bg-primary px-3 py-1.5 text-sm font-medium text-background hover:bg-primary-hover"
         >
           Create team
         </Link>

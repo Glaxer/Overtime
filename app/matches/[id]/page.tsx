@@ -85,12 +85,12 @@ export default async function MatchPage({
     <div className="max-w-2xl">
       <Link
         href={`/competitions/${match.competition_id}`}
-        className="text-sm text-gray-500 hover:underline"
+        className="text-sm text-muted hover:underline"
       >
         ← {match.competition.name}
       </Link>
 
-      <p className="mt-2 text-sm text-gray-500">
+      <p className="mt-2 text-sm text-muted">
         Round {match.round} · Best of {match.best_of} ·{" "}
         {fmt(match.scheduled_at)}
       </p>
@@ -113,7 +113,7 @@ export default async function MatchPage({
           <p className="text-3xl font-bold">
             {seriesA} – {seriesB}
           </p>
-          <ul className="mt-2 flex flex-col gap-0.5 text-sm text-gray-500">
+          <ul className="mt-2 flex flex-col gap-0.5 text-sm text-muted">
             {games.map((g) => (
               <li key={g.game_number}>
                 Game {g.game_number}: {g.score_a} – {g.score_b}
@@ -122,14 +122,14 @@ export default async function MatchPage({
           </ul>
         </div>
       ) : (
-        <p className="mb-8 text-sm text-gray-500">Not played yet</p>
+        <p className="mb-8 text-sm text-muted">Not played yet</p>
       )}
 
       {/* Submit result */}
       {!hasResult && pending.length === 0 && isParticipantCaptain && (
         <div className="mb-8">
           <h2 className="mb-2 font-semibold">Submit result</h2>
-          <p className="mb-2 text-xs text-gray-500">
+          <p className="mb-2 text-xs text-muted">
             Fill in only the games that were played. Left column ={" "}
             {match.team_a.name}.
           </p>
@@ -138,19 +138,19 @@ export default async function MatchPage({
             <input type="hidden" name="best_of" value={match.best_of} />
             {Array.from({ length: match.best_of }, (_, i) => i + 1).map((n) => (
               <div key={n} className="flex items-center gap-2 text-sm">
-                <span className="w-16 text-gray-500">Game {n}</span>
+                <span className="w-16 text-muted">Game {n}</span>
                 <input
                   type="number"
                   min={0}
                   name={`game_${n}_a`}
-                  className="w-16 rounded border p-1"
+                  className="w-16 rounded border border-border p-1"
                 />
                 <span>–</span>
                 <input
                   type="number"
                   min={0}
                   name={`game_${n}_b`}
-                  className="w-16 rounded border p-1"
+                  className="w-16 rounded border border-border p-1"
                 />
               </div>
             ))}
@@ -159,7 +159,7 @@ export default async function MatchPage({
           <form action={forfeitMatch} className="mt-4">
             <input type="hidden" name="match_id" value={match.id} />
             <Button variant="danger">Forfeit as {myCaptainTeam.name}</Button>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-muted">
               {match.team_a.id === myCaptainTeam.id
                 ? match.team_b.name
                 : match.team_a.name}{" "}
@@ -179,8 +179,11 @@ export default async function MatchPage({
                 s.payload as { games: { a: number; b: number }[] }
               ).games;
               return (
-                <li key={s.id} className="rounded border p-3 text-sm">
-                  <p className="mb-1 text-gray-500">
+                <li
+                  key={s.id}
+                  className="rounded border border-border p-3 text-sm"
+                >
+                  <p className="mb-1 text-muted">
                     by {s.submitter.display_name} · {fmt(s.created_at)}
                   </p>
                   <p className="mb-2">
@@ -218,7 +221,7 @@ export default async function MatchPage({
       {!hasResult && myCaptainTeam && !usedReschedule && match.scheduled_at && (
         <div className="mb-8 max-w-sm">
           <h2 className="mb-2 font-semibold">Propose a new time</h2>
-          <p className="mb-2 text-xs text-gray-500">
+          <p className="mb-2 text-xs text-muted">
             Up to one week later. Needs approval from the opposing captain and
             an admin. Each match can only be moved once.
           </p>
@@ -230,7 +233,7 @@ export default async function MatchPage({
               required
               min={toLocalInputValue(match.scheduled_at)}
               max={maxDate}
-              className="flex-1 rounded border p-1 text-sm"
+              className="flex-1 rounded border border-border p-1 text-sm"
             />
             <Button>Propose</Button>
           </form>
@@ -239,7 +242,7 @@ export default async function MatchPage({
 
       {/* Pending reschedule request */}
       {pendingReschedule && (
-        <div className="mb-8 max-w-md rounded border p-3">
+        <div className="mb-8 max-w-md rounded border border-border p-3">
           <h2 className="mb-1 font-semibold">Reschedule requested</h2>
           <p className="text-sm">
             {pendingReschedule.requester.display_name} proposes{" "}
@@ -247,7 +250,7 @@ export default async function MatchPage({
               {fmt(pendingReschedule.proposed_at)}
             </span>
           </p>
-          <p className="mt-1 text-xs text-gray-500">
+          <p className="mt-1 text-xs text-muted">
             Opponent:{" "}
             {pendingReschedule.opponent_approved_by ? "✓ approved" : "waiting"}{" "}
             · Admin:{" "}

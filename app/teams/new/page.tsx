@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { createTeam } from "../actions";
+import Button from "@/components/ui/Button";
 
 export default async function NewTeamPage() {
   const supabase = await createClient();
@@ -20,16 +21,20 @@ export default async function NewTeamPage() {
           name="name"
           placeholder="Team name"
           required
-          className="rounded border p-2"
+          className="rounded border border-border p-2"
         />
-        <select name="title_id" required className="rounded border p-2">
+        <select
+          name="title_id"
+          required
+          className="rounded border border-border p-2"
+        >
           {titles?.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
             </option>
           ))}
         </select>
-        <button className="rounded bg-black p-2 text-white">Create team</button>
+        <Button className="w-full">Create team</Button>
       </form>
     </div>
   );

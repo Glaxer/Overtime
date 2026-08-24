@@ -6,10 +6,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 type Variant = "success" | "error" | "warning" | "info";
 
 const styles: Record<Variant, string> = {
-  success: "border-green-500 bg-green-500/10 text-green-500",
-  error: "border-red-500 bg-red-500/10 text-red-500",
-  warning: "border-amber-500 bg-amber-500/10 text-amber-500",
-  info: "border-blue-500 bg-blue-500/10 text-blue-500"
+  success: "border-success bg-success/10 text-success",
+  error: "border-danger bg-danger/10 text-danger",
+  warning: "border-warning bg-warning/10 text-warning",
+  info: "border-primary bg-primary/10 text-primary"
 };
 
 const PARAMS: Variant[] = ["error", "success", "warning", "info"];
@@ -66,7 +66,7 @@ export default function Alert() {
       }`}
     >
       <div
-        className={`flex items-center gap-3 rounded border px-4 py-2 text-sm shadow-lg ${styles[alert.variant]}`}
+        className={`flex items-center bg-background gap-3 rounded border border-border px-4 py-2 text-sm shadow-lg ${styles[alert.variant]}`}
       >
         <span>{alert.message}</span>
         <button

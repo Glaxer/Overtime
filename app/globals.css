@@ -1,28 +1,66 @@
 @import "tailwindcss";
 
+/* Light theme (default) */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf7f1;
+  --surface: #fffdf8;
+  --border: #e6e0d6;
+  --muted: #756f66;
+
+  --ink: #1c1a17;
+
+  --primary: #14a44d;
+  --primary-hover: #0f8c41;
+  --secondary: #ea6a2a;
+  --secondary-hover: #d55a1d;
+
+  --success: #14a44d;
+  --warning: #d97706;
+  --danger: #dc2626;
+}
+
+.dark {
+  --background: #1a1a1a;
+  --surface: #242424;
+  --border: #383838;
+  --muted: #a49f97;
+
+  --ink: #f2efe9;
+
+  --primary: #1db954;
+  --primary-hover: #22d365;
+  --secondary: #f2711c;
+  --secondary-hover: #ff8534;
+
+  --success: #1db954;
+  --warning: #fbbf24;
+  --danger: #f87171;
 }
 
 @theme inline {
   --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+
+  --color-ink: var(--ink);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-secondary: var(--secondary);
+  --color-secondary-hover: var(--secondary-hover);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--ink);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
 @keyframes alert-in {

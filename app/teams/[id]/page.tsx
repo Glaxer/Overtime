@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getTeam } from "@/lib/queries/teams";
 import { addMember } from "../actions";
+import Button from "@/components/ui/Button";
 
 export default async function TeamPage({
   params
@@ -24,7 +25,7 @@ export default async function TeamPage({
 
   return (
     <div className="max-w-2xl">
-      <p className="text-sm text-gray-500">{team.title.name}</p>
+      <p className="text-sm text-muted">{team.title.name}</p>
       <h1 className="mb-6 text-2xl font-bold">{team.name}</h1>
 
       <h2 className="mb-2 font-semibold">Roster</h2>
@@ -33,7 +34,7 @@ export default async function TeamPage({
           <li key={m.user.id} className="flex items-center gap-2 text-sm">
             {m.user.display_name}
             {m.role === "captain" && (
-              <span className="rounded bg-gray-200 px-1.5 py-0.5 text-xs">
+              <span className="rounded bg-border border-border px-1.5 py-0.5 text-xs">
                 Captain
               </span>
             )}
@@ -50,11 +51,9 @@ export default async function TeamPage({
               name="display_name"
               placeholder="Display name"
               required
-              className="flex-1 rounded border p-2 text-sm"
+              className="flex-1 rounded border border-border p-2 text-sm"
             />
-            <button className="rounded bg-black px-3 text-sm text-white">
-              Add
-            </button>
+            <Button className="w-full">Add</Button>
           </form>
         </div>
       )}

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { createCompetition } from "../actions";
+import Button from "@/components/ui/Button";
 
 export default async function NewCompetitionPage() {
   const supabase = await createClient();
@@ -20,16 +21,24 @@ export default async function NewCompetitionPage() {
           name="name"
           placeholder="Competition name"
           required
-          className="rounded border p-2"
+          className="rounded border border-border p-2"
         />
-        <select name="title_id" required className="rounded border p-2">
+        <select
+          name="title_id"
+          required
+          className="rounded border border-border p-2"
+        >
           {titles?.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name}
             </option>
           ))}
         </select>
-        <select name="type" required className="rounded border p-2">
+        <select
+          name="type"
+          required
+          className="rounded border border-border p-2"
+        >
           <option value="league">League</option>
           <option value="tournament">Tournament</option>
         </select>
@@ -40,20 +49,20 @@ export default async function NewCompetitionPage() {
           max={10}
           defaultValue={3}
           required
-          className="rounded border p-2"
+          className="rounded border border-border p-2"
         />
 
         <input
           name="start_date"
           type="date"
           required
-          className="rounded border p-2"
+          className="rounded border border-border p-2"
         />
         <input
           name="match_times"
           placeholder="Match times, e.g. 19:00, 20:00"
           required
-          className="rounded border p-2"
+          className="rounded border border-border p-2"
         />
         <input
           name="round_interval_days"
@@ -61,12 +70,12 @@ export default async function NewCompetitionPage() {
           min={1}
           defaultValue={7}
           required
-          className="rounded border p-2"
+          className="rounded border border-border p-2"
         />
         <select
           name="best_of"
           required
-          className="rounded border p-2"
+          className="rounded border border-border p-2"
           defaultValue={3}
         >
           {[1, 3, 5, 7].map((n) => (
@@ -79,7 +88,7 @@ export default async function NewCompetitionPage() {
           name="playoff_teams"
           required
           defaultValue={0}
-          className="rounded border p-2"
+          className="rounded border border-border p-2"
         >
           <option value={0}>No playoffs</option>
           {[2, 4, 8, 16].map((n) => (
@@ -89,9 +98,7 @@ export default async function NewCompetitionPage() {
           ))}
         </select>
 
-        <button className="rounded bg-black p-2 text-white">
-          Create competition
-        </button>
+        <Button className="w-full">Create competition</Button>
       </form>
     </div>
   );

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { login } from "../actions";
+import Button from "@/components/ui/Button";
 
 export default async function LoginPage() {
   return (
@@ -11,16 +12,16 @@ export default async function LoginPage() {
           type="email"
           placeholder="Email"
           required
-          className="rounded border p-2"
+          className="rounded border border-border p-2"
         />
         <input
           name="password"
           type="password"
           placeholder="Password"
           required
-          className="rounded border p-2"
+          className="rounded border border-border p-2"
         />
-        <button className="rounded bg-black p-2 text-white">Log in</button>
+        <Button className="w-full">Log in</Button>
       </form>
       <p className="mt-4 text-sm">
         No account?{" "}

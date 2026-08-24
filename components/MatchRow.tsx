@@ -37,13 +37,13 @@ export default function MatchRow({
   const played = match.games.length > 0 || !!match.forfeited_by;
 
   return (
-    <li className="flex items-center justify-between rounded border p-3 text-sm">
+    <li className="flex items-center justify-between rounded border border-border p-3 text-sm">
       <span className="flex items-center gap-2">
         <Link href={`/matches/${match.id}`} className="hover:underline">
           {match.team_a.name} vs {match.team_b.name}
         </Link>
         {match.forfeited_by ? (
-          <span className="text-gray-500">
+          <span className="text-muted">
             FF —{" "}
             {match.forfeited_by === match.team_a.id
               ? match.team_b.name
@@ -51,7 +51,7 @@ export default function MatchRow({
             wins
           </span>
         ) : match.games.length > 0 ? (
-          <span className="text-gray-500">
+          <span className="text-muted">
             {gamesA}–{gamesB}
           </span>
         ) : null}
@@ -68,14 +68,14 @@ export default function MatchRow({
               match.scheduled_at ? toLocalInputValue(match.scheduled_at) : ""
             }
             min={toLocalInputValue(new Date())}
-            className="rounded border p-1 text-xs"
+            className="rounded border border-border p-1 text-xs"
           />
           <Button variant="secondary" className="text-xs">
             Save
           </Button>
         </form>
       ) : (
-        <span className="text-gray-500">{fmt(match.scheduled_at)}</span>
+        <span className="text-muted">{fmt(match.scheduled_at)}</span>
       )}
     </li>
   );

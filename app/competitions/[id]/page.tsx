@@ -81,7 +81,7 @@ export default async function CompetitionPage({
 
   return (
     <div className="max-w-2xl">
-      <p className="text-sm text-gray-500">
+      <p className="text-sm text-muted">
         {comp.title.name} · {comp.type} · {comp.status}
       </p>
       <h1 className="mb-6 text-2xl font-bold">{comp.name}</h1>
@@ -97,7 +97,7 @@ export default async function CompetitionPage({
           </li>
         ))}
         {accepted.length === 0 && (
-          <li className="text-sm text-gray-500">No teams yet</li>
+          <li className="text-sm text-muted">No teams yet</li>
         )}
       </ul>
 
@@ -110,7 +110,7 @@ export default async function CompetitionPage({
             <select
               name="team_id"
               required
-              className="flex-1 rounded border p-2 text-sm"
+              className="flex-1 rounded border  border-border p-2 text-sm"
             >
               {eligibleTeams.map((m) => (
                 <option key={m.team.id} value={m.team.id}>
@@ -131,7 +131,7 @@ export default async function CompetitionPage({
             {pending.map((s) => (
               <li
                 key={s.team.id}
-                className="flex items-center justify-between rounded border p-3"
+                className="flex items-center justify-between rounded border border-border p-3"
               >
                 <span className="text-sm font-medium">{s.team.name}</span>
                 <span className="flex gap-2">
@@ -168,13 +168,11 @@ export default async function CompetitionPage({
             {mySignups.map((s) => (
               <li
                 key={s.team.id}
-                className="flex items-center justify-between rounded border p-3"
+                className="flex items-center justify-between rounded border border-border p-3"
               >
                 <span className="text-sm">
                   {s.team.name}
-                  <span className="ml-2 text-xs text-gray-500">
-                    ({s.status})
-                  </span>
+                  <span className="ml-2 text-xs text-muted">({s.status})</span>
                 </span>
                 <form action={withdrawSignup}>
                   <input type="hidden" name="competition_id" value={comp.id} />
@@ -200,7 +198,7 @@ export default async function CompetitionPage({
         <div className="mb-8">
           <h2 className="mb-2 font-semibold">Standings</h2>
           <table className="w-full text-sm">
-            <thead className="text-left text-xs text-gray-500">
+            <thead className="text-left text-xs text-muted">
               <tr>
                 <th className="py-1 pr-2">#</th>
                 <th className="py-1 pr-2">Team</th>
@@ -214,8 +212,8 @@ export default async function CompetitionPage({
             </thead>
             <tbody>
               {standings.map((row, i) => (
-                <tr key={row.teamId} className="border-t border-gray-700">
-                  <td className="py-1 pr-2 text-gray-500">{i + 1}</td>
+                <tr key={row.teamId} className="border-t border-border">
+                  <td className="py-1 pr-2 text-muted">{i + 1}</td>
                   <td className="py-1 pr-2">
                     <Link
                       href={`/teams/${row.teamId}`}
@@ -227,7 +225,7 @@ export default async function CompetitionPage({
                   <td className="py-1 pr-2 text-right">{row.played}</td>
                   <td className="py-1 pr-2 text-right">{row.wins}</td>
                   <td className="py-1 pr-2 text-right">{row.losses}</td>
-                  <td className="py-1 pr-2 text-right text-gray-500">
+                  <td className="py-1 pr-2 text-right text-muted">
                     {row.gameWins}–{row.gameLosses}
                   </td>
                   <td className="py-1 pr-2 text-right">
@@ -250,9 +248,7 @@ export default async function CompetitionPage({
           </h2>
           {regularRounds.map((r) => (
             <div key={r} className="mb-4">
-              <h3 className="mb-1 text-sm font-medium text-gray-500">
-                Round {r}
-              </h3>
+              <h3 className="mb-1 text-sm font-medium text-muted">Round {r}</h3>
               <ul className="flex flex-col gap-1">
                 {regularMatches
                   .filter((m) => m.round === r)
@@ -276,7 +272,7 @@ export default async function CompetitionPage({
           <h2 className="mb-2 font-semibold">Playoffs</h2>
           {playoffRounds.map((r) => (
             <div key={r} className="mb-4">
-              <h3 className="mb-1 text-sm font-medium text-gray-500">
+              <h3 className="mb-1 text-sm font-medium text-muted">
                 {playoffLabel(r)}
               </h3>
               <ul className="flex flex-col gap-1">
@@ -322,7 +318,7 @@ export default async function CompetitionPage({
             <select
               name="playoff_teams"
               defaultValue={playoffTeams}
-              className="rounded border p-1 text-sm"
+              className="rounded border border-border p-1 text-sm"
             >
               <option value={0}>No playoffs</option>
               {[2, 4, 8, 16].map((n) => (

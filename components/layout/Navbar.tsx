@@ -19,7 +19,7 @@ export default async function Navbar() {
   }
 
   return (
-    <aside className="flex h-full flex-col border-r p-4">
+    <aside className="flex h-full flex-col border-r bg-surface p-4">
       <Link href="/" className="mb-8 text-xl font-bold">
         Overtime
       </Link>
@@ -29,14 +29,14 @@ export default async function Navbar() {
         {user && (
           <Link
             href="/dashboard"
-            className="rounded px-2 py-1.5 text-sm hover:bg-gray-100"
+            className="rounded px-2 py-1.5 text-sm hover:bg-surface"
           >
             Dashboard
           </Link>
         )}
         <Link
           href="/competitions"
-          className="rounded px-2 py-1.5 text-sm hover:bg-gray-100"
+          className="rounded px-2 py-1.5 text-sm hover:bg-surface"
         >
           Competitions
         </Link>
@@ -46,9 +46,9 @@ export default async function Navbar() {
       <div className="mt-auto flex flex-col gap-2 border-t pt-4">
         {user ? (
           <>
-            <span className="px-2 text-sm text-gray-600">{displayName}</span>
+            <span className="px-2 text-sm text-muted">{displayName}</span>
             <form action={logout}>
-              <button className="w-full rounded border px-2 py-1.5 text-left text-sm hover:bg-gray-100">
+              <button className="w-full rounded border border-border px-2 py-1.5 text-left text-sm hover:bg-surface">
                 Log out
               </button>
             </form>
@@ -57,13 +57,13 @@ export default async function Navbar() {
           <>
             <Link
               href="/login"
-              className="rounded px-2 py-1.5 text-sm hover:bg-gray-100"
+              className="rounded px-2 py-1.5 text-sm hover:bg-surface"
             >
               Log in
             </Link>
             <Link
               href="/signup"
-              className="rounded bg-black px-2 py-1.5 text-center text-sm text-white"
+              className="rounded bg-primary px-2 py-1.5 text-center text-sm text-background hover:bg-primary-hover"
             >
               Sign up
             </Link>

@@ -3,9 +3,10 @@ type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const variants = {
-  primary: "bg-blue-600 text-white hover:bg-blue-500 border border-transparent",
-  secondary: "border border-gray-400 text-inherit hover:bg-gray-500/20",
-  danger: "border border-red-400 text-red-500 hover:bg-red-500/10"
+  primary:
+    "bg-primary text-background hover:bg-primary-hover border border-transparent",
+  secondary: "border border-border text-text-default hover:bg-surface",
+  danger: "border border-danger text-danger hover:bg-danger/10"
 };
 
 export default function Button({

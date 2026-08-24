@@ -54,7 +54,7 @@ export default function SwapTool({
         name="slot_1"
         value={first}
         onChange={(e) => setFirst(e.target.value)}
-        className="flex-1 rounded border p-1 text-xs"
+        className="flex-1 rounded border border-border p-1 text-xs"
       >
         {slots.map((s) => (
           <option key={s.value} value={s.value}>
@@ -67,7 +67,7 @@ export default function SwapTool({
         name="slot_2"
         required
         disabled={targets.length === 0}
-        className="flex-1 rounded border p-1 text-xs"
+        className="flex-1 rounded border border-border p-1 text-xs"
       >
         {targets.map((s) => (
           <option key={s.value} value={s.value}>
@@ -75,7 +75,7 @@ export default function SwapTool({
           </option>
         ))}
       </select>
-      <button className="rounded border px-2 text-xs hover:bg-gray-500/20">
+      <button className="rounded border border-border px-2 text-xs hover:bg-surface">
         Swap
       </button>
     </form>

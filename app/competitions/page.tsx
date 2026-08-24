@@ -30,8 +30,8 @@ export default async function CompetitionsPage({
   const chip = (active: boolean) =>
     `rounded px-2 py-1 text-xs ${
       active
-        ? "bg-blue-600 text-white"
-        : "border border-gray-500 hover:bg-gray-500/20"
+        ? "bg-primary text-background"
+        : "border border-border hover:bg-surface"
     }`;
 
   return (
@@ -40,7 +40,7 @@ export default async function CompetitionsPage({
         <h1 className="text-2xl font-bold">Competitions</h1>
         <Link
           href="/competitions/new"
-          className="rounded bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-500"
+          className="rounded bg-primary px-3 py-1.5 text-sm font-medium text-background hover:bg-primary-hover"
         >
           Create competition
         </Link>
@@ -81,19 +81,17 @@ export default async function CompetitionsPage({
           <li key={c.id}>
             <Link
               href={`/competitions/${c.id}`}
-              className="flex items-center justify-between rounded border p-3 hover:bg-gray-500/10"
+              className="flex items-center justify-between rounded border  border-border p-3 hover:bg-surface"
             >
               <span>
                 <span className="font-medium">{c.name}</span>
-                <span className="ml-2 text-sm text-gray-500">
-                  {c.title.name}
-                </span>
+                <span className="ml-2 text-sm text-muted">{c.title.name}</span>
               </span>
               <span className="flex gap-2 text-xs">
-                <span className="rounded bg-gray-500/30 px-1.5 py-0.5">
+                <span className="rounded bg-border border-border px-1.5 py-0.5">
                   {c.type}
                 </span>
-                <span className="rounded bg-gray-500/30 px-1.5 py-0.5">
+                <span className="rounded bg-border border-border px-1.5 py-0.5">
                   {c.status}
                 </span>
               </span>
@@ -101,7 +99,7 @@ export default async function CompetitionsPage({
           </li>
         ))}
         {filtered.length === 0 && (
-          <li className="text-sm text-gray-500">
+          <li className="text-sm text-muted">
             No competitions match those filters
           </li>
         )}
